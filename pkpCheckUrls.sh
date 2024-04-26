@@ -8,8 +8,14 @@ NC='\033[0m' # No Color
 BASEURL="demo.publicknowledgeproject.org/ojs3/testdrive"     # Replace with your base_url
 JOURNAL="testdrive-journal"                                  # Replace with your journal's slug
 
-# BASEURL="ada-revista01.precarietat.net"
-# JOURNAL="revista01"
+# BASEURL="ada-revista01.precarietat.net"	# Dockerized with http behind a reverse proxy.
+# JOURNAL="revista01"				# Single-tenant: Subdomain, RESTful with journalSlug.
+# 
+# BASEURL="papers.uab.cat"			# Dockerized with http behind a reverse proxy.
+# JOURNAL="papers"				# Single-tenant: Subdomain, RESTful, NO journalSlug.
+#
+# BASEURL="revistes.uab.cat/brumal"		# Dockerized with http behind a reverse proxy.
+# JOURNAL="brumal"				# Single-tenant: Folder, RESTful, NO journalSlug.
 
 # Initialize variables
 errors=0
@@ -84,43 +90,45 @@ check_url() {
 
 # Lists of OJS entrypoints (work in progress).
 # Use the one you like to test as first argument in the script call.
+# Documentation: https://docs.pkp.sfu.ca/dev/api/ojs/3.4#tag/Access
 
 # Common list of urls as OJS works "out of the box". Any OJS site sould pass this basic test.
+# Rules for domain, explicit index.php (no RESTful), mutli-tenant, https and httpS.
 listBasic=(
+  "http://$BASEURL/index.php"                                                   	"HTTP is defined (explicit and hopefully redirected to HTTPS)"
+  "http://$BASEURL"                                                           	        "HTTP is defined for home (redirected to index.php with HTTPS)"
   "https://$BASEURL"                                                             	"Main page (usually redirected)"
   "https://$BASEURL/index.php"                                                   	"Main page destination (explicit)"
   "https://$BASEURL/index.php/index"                                                    "OJS site's index (explicit)"
   "https://$BASEURL/index.php/$JOURNAL/about"                                           "Example of journal's verbs (explicit)"
   "https://$BASEURL/index.php/$JOURNAL/\$\$\$call\$\$\$/page/page/css?name=stylesheet"  'Call including $$$call$$$ (explicit)'
-  "https://$BASEURL/index.php/$JOURNAL/api/v1/contexts/1"                               "Entrypoint for API in journal (explicit)"
-  "https://$BASEURL/index.php/$JOURNAL/oai"                                             "Entrypoint for OAI in journal (explicit)"
+  "https://$BASEURL/index.php/$JOURNAL/oai"                                             "Entrypoint for OAI at journal (explicit)"
+  "https://$BASEURL/index.php/index/oai"                                                "Entrypoint for OAI at site-wide (explicit)"
+  "https://$BASEURL/index.php/$JOURNAL/api/v1/contexts/1"                               "Entrypoint for API at journal (explicit)"
+  "https://$BASEURL/index.php/_/api/v1/contexts/1"                                      "New 3.4 entrypoint for API at site-wide (explicit)"
   "https://$BASEURL/index.php/index/install/install"                                    "Installation entrypoint (explicit and redirected once installed)"
 )
 
-# DOMain or subdomain install with RESTful and MULTI-tenant site (unconfirmed list)
-listDomRestMulti=(
-  "https://$BASEURL"                                                             "Main page (usually redirected)"
-  "https://$BASEURL/index"                                                       "OJS site's index"
-  "https://$BASEURL/$JOURNAL/about"                                              "Example of journal's verbs"
-  "https://$BASEURL/$JOURNAL/\$\$\$call\$\$\$/page/page/css?name=stylesheet"     'Call including $$$call$$$'
-  "https://$BASEURL/$JOURNAL/api/v1/contexts/1"                                  "Entrypoint for API in journal"
-  "https://$BASEURL/$JOURNAL/oai"                                                "Entrypoint for OAI in journal"
-  "https://$BASEURL/index/install/install"                                       "Installation path (redirected when installed)"
+# DOMain or subdomain, RESTful, journalSlug in a MULTI-tenant site (unconfirmed list)
+listRestful=(
+  "https://$BASEURL/index"                                                              "OJS site's index (RESTful)"
+  "https://$BASEURL/$JOURNAL/about"                                                     "Example of journal's verbs (RESTful)"
+  "https://$BASEURL/$JOURNAL/\$\$\$call\$\$\$/page/page/css?name=stylesheet"            'Call including $$$call$$$ (RESTful)'
+  "https://$BASEURL/$JOURNAL/oai"                                                       "Entrypoint for OAI at journal (RESTful)"
+  "https://$BASEURL/index/oai"                                                          "Entrypoint for OAI at site-wide (RESTful)"
+  "https://$BASEURL/$JOURNAL/api/v1/contexts/1"                                         "Entrypoint for API at journal (RESTful)"
+  "https://$BASEURL/_/api/v1/contexts/1"                                                "New 3.4 entrypoint for API at site-wide (RESTful)"
+  "https://$BASEURL/index/install/install"                                              "Installation entrypoint (RESTful and redirected)"
 )
 
-# DOMain or subdomain install with RESTful and SINGLE-tenant installation (unconfirmed list)
-listDomRestSingle=(
-  "https://$BASEURL"                                                             "Main page (usually redirected)"
-  "https://$BASEURL/index.php"                                                 	 "Main page destination (explicit)"
-  "https://$BASEURL/index"                                                       "OJS site's index"
-  "https://$BASEURL/$JOURNAL/about"                                              "Example of journal's verbs"
-  "https://$BASEURL/$JOURNAL/\$\$\$call\$\$\$/page/page/css?name=stylesheet"     'Call including $$$call$$$'
-  "https://$BASEURL/$JOURNAL/api/v1/contexts/1"                                  "Entrypoint for API in journal"
-  "https://$BASEURL/$JOURNAL/oai"                                                "Entrypoint for OAI in journal"
-  "https://$BASEURL/index/install/install"                                       "Installation path (redirected when installed)"
-  "https://$BASEURL/admin"                                                       "Single-tenant: Admin page (if defined in base_url[index]"
-  "https://$BASEURL/api/v1/contexts/1"                                           "Single-tenant: Entrypoint for API in site"
-  "https://$BASEURL/oai"                                                         "Single-tenant: Entrypoint for OAI in site"
+# DOMain or subdomain, RESTful, NO journalSlug in a SINGLE-tenant site (unconfirmed list)
+listNoslug=(
+  "https://$BASEURL/about"                                                              "Example of journal's verbs (RESTful & noSlug)"
+  "https://$BASEURL/\$\$\$call\$\$\$/page/page/css?name=stylesheet"                     'Call including $$$call$$$ (RESTful & noSlug)'
+  "https://$BASEURL/oai"                                                                "Entrypoint for OAI at journal (RESTful & noSlug)"
+  "https://$BASEURL/admin/oai"                                                          "Entrypoint for OAI at site-wide (RESTful)"
+  "https://$BASEURL/admin/index/oai"                                                    "Entrypoint for OAI at site-wide (RESTful & noSlug)"
+  "https://$BASEURL/api/v1/contexts/1"                                                  "Entrypoint for API at journal (RESTful & noSlug)"
 )
 
 urlList=''
@@ -130,21 +138,22 @@ case ${1} in
     basic)
         urlList=("${listBasic[@]}")
     ;;
-    domNorestMulti)
-        urlList=("${listDomRestMulti[@]}")
+    restful)
+        urlList=("${listRestful[@]}")
     ;;
-    domRestSingle)
-        urlList=("${listDomRestSingle[@]}")
+    noslug)
+        urlList=("${listNoslug[@]}")
     ;;
     *)
-        echo "Sytnax: ./pkpCheckUrls.sh listNoRestMulti"
+        echo "Sytnax: ./pkpCheckUrls.sh basic"
         echo ""
         echo "Please provide a valid set of urls to test. Existing options are:"
-        echo "- [basic] Usual set of urls ANY site should pass. Rules defined for domain or subdomain. No Restful, Multi-tenant. With JOURNAL slug."
-        echo "- [domNorestMulti] Set of urls for: Domain or subdomain. No Restful. Multi-tenant. With JOURNAL slug."
-        echo "- [domRestSingle] Set fo urls for: Domain or subdomain. Restfull. Single-tenant. Without JOURNAL slug."
+        echo "- [basic] Usual set of urls ANY site should pass. Rules defined for domain or subdomain. No Restful, Multi-tenant. With JournalSlug."
+        echo "- [restful] Set of urls for: Domain or subdomain. Restful. Multi-tenant. With JournalSlug."
+        echo "- [noslug] Set fo urls for: Domain or subdomain. Restfull. Single-tenant. Without JournalSlug."
         echo ""
         echo "You can run the script multiple times with different sets on same journal to discover how resilent is it."
+	echo "Right now sets are acumulative: if you wanto to set your wit with [noslug], you should pass first [basic] and [rest] sets."
         exit 1
     ;;
 esac
