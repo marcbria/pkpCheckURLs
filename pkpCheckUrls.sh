@@ -8,6 +8,8 @@ NC='\033[0m' # No Color
 BASEURL="demo.publicknowledgeproject.org/ojs3/testdrive"     # Replace with your base_url
 JOURNAL="testdrive-journal"                                  # Replace with your journal's slug
 
+# Additional examples (could be dissabled)
+#
 # BASEURL="ada-revista01.precarietat.net"	# Dockerized with http behind a reverse proxy.
 # JOURNAL="revista01"				# Single-tenant: Subdomain, RESTful with journalSlug.
 # 
@@ -16,6 +18,9 @@ JOURNAL="testdrive-journal"                                  # Replace with your
 #
 # BASEURL="revistes.uab.cat/brumal"		# Dockerized with http behind a reverse proxy.
 # JOURNAL="brumal"				# Single-tenant: Folder, RESTful, NO journalSlug.
+#
+# BASEURL="ada-revista03.precarietat.net"	# Dockerized with http behind a reverse proxy.
+# JOURNAL="revista03"				# Single-tenant: Subdomain, RESTful with journalSlug.
 
 # Initialize variables
 errors=0
@@ -28,59 +33,71 @@ unknown=0
 count=1
 
 # Check if the url is valid or not.
-check_url() {
+checkUrl() {
     url=$1
     comment=$2
 
-    response_code=$(curl -ks -o /dev/null -w "%{http_code}" "$url")
-    formatted_count=$(printf "%02d" $count)
+    # Get the response code of the first URL
+    initialResponseCode=$(curl -ks -o /dev/null -w "%{http_code}" "$url")
 
-    case $response_code in
+    # Get the final URL and the response code after following all redirects
+    finalUrl=$(curl -sSL -o /dev/null -w "%{url_effective}" "$url")
+    finalResponseCode=$(curl -ks -o /dev/null -w "%{http_code}" "$finalUrl")
+
+    formattedCount=$(printf "%02d" $count)
+
+    case $finalResponseCode in
         # Not Found are errors
         404)
-            echo -e "${formatted_count} --> ${RED}INVALID${NC} - Not Found"
+            echo -e "${formattedCount} --> ${RED}INVALID${NC} - Not Found"
 	    echo -e "       URL Type: $comment"
-            echo -e "       Response: $response_code: $url"
+            echo -e "       First Response: $initialResponseCode: $url"
+	    echo -e "       Last response:  $finalResponseCode: $finalUrl"
             ((errors++))
             ((notFound++))
             ;;
         # Active are valid
         200)
-            echo -e "${formatted_count} --> ${GREEN}VALID${NC} - Active"
+            echo -e "${formattedCount} --> ${GREEN}VALID${NC} - Active"
 	    echo -e "       URL Type: $comment"
-            echo -e "       Response: $response_code: $url"
+            echo -e "       First Response: $initialResponseCode: $url"
+	    echo -e "       Last response:  $finalResponseCode: $finalUrl"
             ((valid++))
             ((active++))
             ;;
         # Unauthorized are valid
         403)
-            echo -e "${formatted_count} --> ${GREEN}VALID${NC} - Unauthorized"
+            echo -e "${formattedCount} --> ${GREEN}VALID${NC} - Unauthorized"
 	    echo -e "       URL Type: $comment"
-            echo -e "       Response: $response_code: $url"
+            echo -e "       First Response: $initialResponseCode: $url"
+	    echo -e "       Last response:  $finalResponseCode: $finalUrl"
             ((valid++))
             ((unauthorized++))
             ;;
         # Permanent redirections are valid
         301 | 308)
-            echo -e "${formatted_count} --> ${GREEN}VALID${NC} - Permanent redirection"
+            echo -e "${formattedCount} --> ${GREEN}VALID${NC} - Permanent redirection"
 	    echo -e "       URL Type: $comment"
-            echo -e "       Response: $response_code: $url"
+            echo -e "       First Response: $initialResponseCode: $url"
+	    echo -e "       Last response:  $finalResponseCode: $finalUrl"
             ((valid++))
             ((redirected++))
             ;;
         # Temporal redirections are valid
         302 | 303 | 307)
-            echo -e "${formatted_count} --> ${GREEN}VALID${NC} - Temporal redirection"
+            echo -e "${formattedCount} --> ${GREEN}VALID${NC} - Temporal redirection"
 	    echo -e "       URL Type: $comment"
-            echo -e "       Response: $response_code: $url"
+            echo -e "       First Response: $initialResponseCode: $url"
+	    echo -e "       Last response:  $finalResponseCode: $finalUrl"
             ((valid++))
             ((redirected++))
             ;;
         # Anything else is Unknown and are invalid.
         *)
-            echo -e "${formatted_count} --> ${RED}UNKNOWN${NC} - Need to be checked"
+            echo -e "${formattedCount} --> ${RED}UNKNOWN${NC} - Need to be checked"
 	    echo -e "       URL Type: $comment"
-            echo -e "       Response: $response_code: $url"
+            echo -e "       First Response: $initialResponseCode: $url"
+	    echo -e "       Last response:  $finalResponseCode: $finalUrl"
             ((errors++))
             ((unknown++))
             ;;
@@ -164,22 +181,22 @@ echo "Journal's context:  $JOURNAL"
 echo ""
 
 for ((i = 0; i < ${#urlList[@]}; i += 2)); do
-    check_url "${urlList[i]}" "${urlList[i+1]}"
+    checkUrl "${urlList[i]}" "${urlList[i+1]}"
 done
 
 # Summarize and show results
 echo ""
 echo    "===========================================SUMMARY OF YOUR URL's HEALTH ====================================================="
 if [ $valid -gt 0 ]; then
-    echo -e "  [${GREEN}VALID:${NC} $valid]        Includes:  Active, Unauthorized and Redirected urls."
+    echo -e "  [${GREEN}VALID:${NC} $valid]"
     echo    "    - Active:       $active - Active are final pages returning a valid 200 status code."
     echo    "    - Redirections: $redirected - Redirected url are usually valid, but url destination need to be add to the list and checked too."
     echo    "    - Unauthorized: $unauthorized - Unauthorized pages are valid endpoints requesting for authorization."
 fi
 if [ $errors -gt 0 ]; then
-    echo -e "  [${RED}ERRORS${NC}: $errors]        Includes: notFound and other unknown codes. They should be fixed."
-    echo    "  - Not Found: $noFound - When an url is Not Found usually means your site is missconfigurated."
-    echo    "  - Unknown:   $unknown - URLs that returned an unexpected code are considered errors and need a detailed review."
+    echo -e "  [${RED}ERRORS${NC}: $errors]"
+    echo    "    - Not Found:    $notFound - When an url is Not Found usually means your site is missconfigurated."
+    echo    "    - Unknown:      $unknown - URLs that returned an unexpected code are considered errors and need a detailed review."
 fi
 echo    "-----------------------------------------------------------------------------------------------------------------------------"
 
