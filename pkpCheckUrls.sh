@@ -109,7 +109,7 @@ displayTestInfo() {
     echo "===================================================== TESTING ================================================================"
     echo "  Base URL:           $BASEURL"
     echo "  Type of test:       $pType"
-    echo "===================================================== TESTING ================================================================"
+    echo "=============================================================================================================================="
     echo ""
 }
 
@@ -215,34 +215,33 @@ generateUrlList() {
 
 }
 
+# Check first parameter (type of test) is set and is one of the existing lists
+checkParam() {
 
-# Select URLs list based on parameter
-# case ${1} in
-#     basic)
-#         urlList=("${listBasic[@]}")
-#     ;;
-#     restful)
-#         urlList=("${listRestful[@]}")
-#     ;;
-#     noslug)
-#         urlList=("${listNoslug[@]}")
-#     ;;
-#     *)
-#         echo "Sytnax: ./pkpCheckUrls.sh basic"
-#         echo ""
-#         echo "Please provide a valid set of urls to test. Existing options are:"
-#         echo "- [basic] Usual set of urls ANY site should pass. Rules defined for domain or subdomain. No Restful, Multi-tenant. With JournalSlug."
-#         echo "- [restful] Set of urls for: Domain or subdomain. Restful. Multi-tenant. With JournalSlug."
-#         echo "- [noslug] Set fo urls for: Domain or subdomain. Restfull. Single-tenant. Without JournalSlug."
-#         echo ""
-#         echo "You can run the script multiple times with different sets on same journal to discover how resilent is it."
-# 	    echo "Right now sets are acumulative: if you wanto to set your wit with [noslug], you should pass first [basic] and [rest] sets."
-#         exit 1
-#     ;;
-# esac
+    case ${1} in
+        basic | restful | noslug)
+        ;;
+        *)
+            echo "Sytnax: ./pkpCheckUrls.sh basic"
+            echo ""
+            echo "Please provide a valid set of urls to test. Existing options are:"
+            echo "- [basic] Usual set of urls ANY site should pass: Common urls for domain or subdomain, NoRestful and with JournalSlug."
+            echo "- [restful] Set of urls for: Domain or subdomain. Restful. With JournalSlug."
+            echo "- [noslug] Set fo urls for: Domain or subdomain. Restfull. Without JournalSlug."
+            echo ""
+            echo "You can run the script multiple times with different sets on same journal to discover how resilent is it."
+            echo "Right now sets are acumulative: if you wanto to set your wit with [noslug], you should pass first [basic] and [rest] sets."
+            exit 1
+        ;;
+    esac
+
+}
 
 
-# If an external file is provided as argument
+# Check first parameter (type of test) is set
+checkParam $pType
+
+# Checks if the external file is provided as argument
 if [ $# -eq 2 ]; then
     # Check if the provided file exists
     if [ -f "$pServers" ]; then
@@ -252,11 +251,11 @@ if [ $# -eq 2 ]; then
             # Check if the line does not start with "#", if yes, process it
             if [[ ! "$line" == \#* ]]; then
 
-                # Show test info
-                displayTestInfo
-
                 # Split the line into variables
                 IFS=',' read -r BASEURL JOURNAL ADMINURL <<< "$line"
+
+                # Show test info
+                displayTestInfo
 
                 # Builds a list of url to check based on the type of test and journal params.
                 generateUrlList "$pType" urlList
@@ -278,9 +277,11 @@ if [ $# -eq 2 ]; then
         echo "Error: File $pServers not found."
         exit 1
     fi
+
+# If no external file is provided, test is applied with a demo url.
 else
 
-    # If no external file is provided, apply the test to this site:
+    # Demo url (replace if you don't like to use an external file):
     BASEURL="demo.publicknowledgeproject.org/ojs3/testdrive"
     JOURNAL="testdrive-journal"
     ADMINURL="demo.publicknowledgeproject.org/ojs3/testdrive"
