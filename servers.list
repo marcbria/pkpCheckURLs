@@ -1,3 +1,13 @@
-# BASEURL, JOURNAL, ADMINURL
+# Columns: BASEURL, JOURNAL, ADMINURL
+# Subdomain, out of the box (no specific config or mod_rewrite rules):
 ada-revista01.precarietat.net,revista01,ada-revista01.precarietat.net
+# Subdomain + RESTful:
+ada-revista02.precarietat.net,revista02,ada-revista02.precarietat.net/admin
+# Subdomain + RESTful + noSlug (admin in "ojs-admin"):
+ada-revista03.precarietat.net,revista03,ada-revista03.precarietat.net/ojs-admin
+# Subdomain + RESTful + noSlug (testing rules):
+ada-revista04.precarietat.net,revista04,ada-revista04.precarietat.net/ojs-admin
+# Real OJS 3.2: Subdomain + RESTful + noSlug 
 papers.uab.cat,papers,papers.uab.cat/index
+# Real OJS 3.2: Folder + RESTful + noSlug 
+revistes.uab.cat/brumal,brumal,revistes.uab.cat/brumal
